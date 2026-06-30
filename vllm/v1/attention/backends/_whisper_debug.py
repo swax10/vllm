@@ -26,7 +26,7 @@ FORCE_CONTIG = int(os.environ.get("VLLM_WHISPER_FORCE_CONTIG", "0"))
 
 _auto = False
 _dump_counts: dict[str, int] = {}
-_MAX_DUMPS_PER_TAG = 4
+_MAX_DUMPS_PER_TAG = 40
 
 
 def enable_auto() -> None:

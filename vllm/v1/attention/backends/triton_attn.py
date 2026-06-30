@@ -649,9 +649,12 @@ class TritonAttentionImpl(AttentionImpl):
 
         dump_meta(
             f"triton/{self.attn_type}",
+            q=query[:num_actual_tokens],
+            k_cache=key_cache,
+            v_cache=value_cache,
             cu_seqlens_q=cu_seqlens_q,
             seqused_k=seqused_k,
-            block_table=block_table,
+            block_table_row0=block_table[0] if block_table.numel() else block_table,
             slot_mapping=attn_metadata.slot_mapping,
             max_seqlen_q=max_seqlen_q,
             max_seqlen_k=max_seqlen_k,
