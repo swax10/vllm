@@ -543,6 +543,9 @@ class Attention(nn.Module, AttentionLayerBase):
                 encoded,
                 kv_cache_dummy_dep=kv_cache_dummy_dep,
             )
+        from vllm.v1.attention.backends._whisper_debug import check_output_nan
+
+        check_output_nan(self.layer_name, self.attn_type, output)
         return output.view(-1, hidden_size)
 
     def calc_kv_scales(self, query, key, value):

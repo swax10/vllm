@@ -642,6 +642,25 @@ class TritonAttentionImpl(AttentionImpl):
 
         mm_prefix_range_tensor = attn_metadata.mm_prefix_range_tensor
 
+        from vllm.v1.attention.backends._whisper_debug import (
+            dump_meta,
+            maybe_contig,
+        )
+
+        dump_meta(
+            f"triton/{self.attn_type}",
+            cu_seqlens_q=cu_seqlens_q,
+            seqused_k=seqused_k,
+            block_table=block_table,
+            slot_mapping=attn_metadata.slot_mapping,
+            max_seqlen_q=max_seqlen_q,
+            max_seqlen_k=max_seqlen_k,
+            causal=attn_metadata.causal,
+        )
+        cu_seqlens_q = maybe_contig(cu_seqlens_q)
+        seqused_k = maybe_contig(seqused_k)
+        block_table = maybe_contig(block_table)
+
         unified_attention(
             q=query[:num_actual_tokens],
             k=key_cache,

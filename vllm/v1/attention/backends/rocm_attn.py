@@ -440,6 +440,25 @@ class RocmAttentionImpl(AttentionImpl):
         max_seqlen_k = attn_metadata.max_seq_len
         block_table = attn_metadata.block_table
 
+        from vllm.v1.attention.backends._whisper_debug import (
+            dump_meta,
+            maybe_contig,
+        )
+
+        dump_meta(
+            f"rocm/{self.attn_type}",
+            cu_seqlens_q=cu_seqlens_q,
+            seqused_k=seqused_k,
+            block_table=block_table,
+            slot_mapping=attn_metadata.slot_mapping,
+            max_seqlen_q=max_seqlen_q,
+            max_seqlen_k=max_seqlen_k,
+            causal=attn_metadata.causal,
+        )
+        cu_seqlens_q = maybe_contig(cu_seqlens_q)
+        seqused_k = maybe_contig(seqused_k)
+        block_table = maybe_contig(block_table)
+
         # Compute attention and update output up to `num_actual_tokens`.
         chunked_prefill_paged_decode(
             query=query[:num_actual_tokens],
