@@ -27,6 +27,8 @@ FORCE_CONTIG = int(os.environ.get("VLLM_WHISPER_FORCE_CONTIG", "0"))
 _auto = False
 _dump_counts: dict[str, int] = {}
 _MAX_DUMPS_PER_TAG = 40
+_nan_warns = 0
+_MAX_NAN_WARNS = 40
 
 
 def enable_auto() -> None:
@@ -78,10 +80,15 @@ def _fmt(name: str, t: object) -> str:
             f"{name}: shape={tuple(t.shape)} dtype={t.dtype} "
             f"stride={tuple(t.stride())} contig={cont}"
         )
-        if t.numel() and t.is_floating_point():
-            s += f" nan={bool(torch.isnan(t).any())} inf={bool(torch.isinf(t).any())}"
-        elif t.numel():
-            s += f" min={int(t.min())} max={int(t.max())}"
+        # Cap reductions: isnan/min/max over a huge tensor (e.g. the multi-GB KV
+        # cache) allocates a same-size temporary and OOMs. Only reduce small ones.
+        if t.numel() and t.numel() <= 5_000_000:
+            if t.is_floating_point():
+                nan = bool(torch.isnan(t).any())
+                inf = bool(torch.isinf(t).any())
+                s += f" nan={nan} inf={inf}"
+            else:
+                s += f" min={int(t.min())} max={int(t.max())}"
         return s
     return f"{name}={t!r}"
 
@@ -115,11 +122,13 @@ def maybe_contig(t: object) -> object:
 
 def check_output_nan(layer_name: str, attn_type: str, output: object) -> None:
     """Per-layer probe: flag NaN/Inf in an attention layer's output."""
-    if not _active() or _capturing():
+    global _nan_warns
+    if not _active() or _capturing() or _nan_warns >= _MAX_NAN_WARNS:
         return
     if not isinstance(output, torch.Tensor) or not output.is_floating_point():
         return
     if torch.isnan(output).any() or torch.isinf(output).any():
+        _nan_warns += 1
         logger.warning(
             "[whisper-dbg] NaN/Inf in attn OUTPUT: layer=%s type=%s shape=%s",
             layer_name,
